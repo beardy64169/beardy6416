@@ -22,11 +22,11 @@
     left: 5px;
     height: 35px;
     text-align: center;
-    color: rgb(253, 253, 255);
     padding-bottom: 5px;
     font-size: 8px;
     position: fixed;
     border-top: 2px solid rgb(2, 2, 2);
+    background-color: antiquewhite;
 }
 .leftmenu {
     left: 5px;
