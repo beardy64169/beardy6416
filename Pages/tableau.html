@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+    <!--The skeleton of this was done using Chat GPT. It is a variation on the classic game, Pong. 
+ I've designed it so it has a wizard duel feel, the ball increases in speed the longer a round goes,
+and the AI messes up occasionally so the player has a better shot at winning.-->
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wizard Duel</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: #000;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      text-align: center;
+    }
+
+    canvas {
+      display: block;
+      margin: auto;
+      border: 2px solid white;
+      background: linear-gradient(to bottom, #008000, #004000); /* Grass-like background */
+    }
+
+    .wizard {
+      position: absolute;
+      width: 50px;
+      height: 50px;
+      background-size: cover;
+    }
+
+    .red-wizard {
+      background-image: url('../Images/FFI_black_mage_(8-bit).gif'); /* Placeholder for red wizard sprite */
+    }
+
+    .blue-wizard {
+      background-image: url('../Images/FFI_red_mage_(8-bit).gif'); /* Placeholder for blue wizard sprite */
+    }
+  </style>
+</head>
+<body>
+  <h1>Wizard Duel</h1>
+  <canvas id="pongCanvas" width="800" height="500"></canvas>
+
+  <div id="redWizard" class="wizard red-wizard"></div>
+  <div id="blueWizard" class="wizard blue-wizard"></div>
+
+  <script>
+    const canvas = document.getElementById("pongCanvas");
+    const ctx = canvas.getContext("2d");
+
+    const redWizard = document.getElementById("redWizard");
+    const blueWizard = document.getElementById("blueWizard");
+
+    // Game variables
+    const paddleHeight = 100;
+    const paddleWidth = 10;
+    const ballSize = 10;
+
+    const player = {
+      x: 50, // Offset from edge
+      y: canvas.height / 2 - paddleHeight / 2,
+      width: paddleWidth,
+      height: paddleHeight,
+      dy: 0,
+      speed: 4,
+      score: 0,
+    };
+
+    const ai = {
+      x: canvas.width - paddleWidth - 50, // Offset from edge
+      y: canvas.height / 2 - paddleHeight / 2,
+      width: paddleWidth,
+      height: paddleHeight,
+      speed: 3, // Increased speed for AI
+      score: 0,
+      randomError: false, // Random error state
+      errorDuration: 0, // Time AI spends moving in the wrong direction
+    };
+
+    const ball = {
+      x: canvas.width / 2,
+      y: canvas.height / 2,
+      size: ballSize,
+      dx: 3,
+      dy: 3,
+      speedIncrement: 0.2,
+      trail: [],
+      trailLength: 10,
+      hits: 0, // Count hits to increase speed
+    };
+
+    // Draw transparent blue walls (paddles)
+    function drawPaddle(paddle) {
+      ctx.fillStyle = "rgba(0, 0, 255, 0.5)";
+      ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
+    }
+
+    // Draw fireball with trail
+    function drawBall() {
+      ctx.fillStyle = "orange";
+      ctx.beginPath();
+      ctx.arc(ball.x, ball.y, ball.size, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Draw flame trail
+      for (let i = 0; i < ball.trail.length; i++) {
+        const opacity = (ball.trail.length - i) / ball.trail.length;
+        ctx.fillStyle = `rgba(255, 69, 0, ${opacity})`;
+        ctx.beginPath();
+        ctx.arc(ball.trail[i].x, ball.trail[i].y, ball.size / 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // Update fireball trail
+    function updateTrail() {
+      ball.trail.push({ x: ball.x, y: ball.y });
+      if (ball.trail.length > ball.trailLength) {
+        ball.trail.shift();
+      }
+    }
+
+    // Draw scores
+    function drawScores() {
+      ctx.font = "20px Arial";
+      ctx.fillStyle = "white";
+      ctx.fillText(`Player: ${player.score}`, 20, 30);
+      ctx.fillText(`AI: ${ai.score}`, canvas.width - 100, 30);
+    }
+
+    // Update ball position
+    function moveBall() {
+      ball.x += ball.dx;
+      ball.y += ball.dy;
+
+      updateTrail();
+
+      // Ball collision with top/bottom walls
+      if (ball.y <= ball.size || ball.y >= canvas.height - ball.size) {
+        ball.dy *= -1;
+      }
+
+      // Ball collision with paddles
+      if (
+        ball.x - ball.size < player.x + player.width &&
+        ball.y > player.y &&
+        ball.y < player.y + player.height
+      ) {
+        ball.dx *= -1;
+        ball.x = player.x + player.width + ball.size; // Prevent sticking
+        ball.hits++;
+        increaseSpeed();
+      }
+
+      if (
+        ball.x + ball.size > ai.x &&
+        ball.y > ai.y &&
+        ball.y < ai.y + ai.height
+      ) {
+        ball.dx *= -1;
+        ball.x = ai.x - ball.size; // Prevent sticking
+        ball.hits++;
+        increaseSpeed();
+      }
+
+      // Ball out of bounds
+      if (ball.x < 0) {
+        ai.score++;
+        resetBall();
+      } else if (ball.x > canvas.width) {
+        player.score++;
+        resetBall();
+      }
+    }
+
+    // Increase ball speed every 10 hits
+    function increaseSpeed() {
+      if (ball.hits % 10 === 0) {
+        ball.dx *= 1 + ball.speedIncrement;
+        ball.dy *= 1 + ball.speedIncrement;
+      }
+    }
+
+    // Reset ball to center
+    function resetBall() {
+      ball.x = canvas.width / 2;
+      ball.y = canvas.height / 2;
+      ball.dx = Math.random() > 0.5 ? 3 : -3; // Randomize direction
+      ball.dy = Math.random() > 0.5 ? 3 : -3;
+      ball.trail = []; // Clear trail
+      ball.hits = 0; // Reset hits
+    }
+
+    // Move player paddle
+    function movePlayer() {
+      player.y += player.dy;
+
+      // Prevent going out of bounds
+      if (player.y < 0) player.y = 0;
+      if (player.y + player.height > canvas.height) player.y = canvas.height - player.height;
+    }
+
+    // Move AI paddle with randomness
+    function moveAI() {
+      if (ai.randomError) {
+        ai.errorDuration--;
+        if (ai.errorDuration <= 0) {
+          ai.randomError = false; // AI recovers from error
+        } else {
+          ai.y += Math.random() > 0.5 ? -ai.speed : ai.speed; // Random wrong move
+          return;
+        }
+      } else if (Math.random() < 0.01) {
+        ai.randomError = true; // 1% chance to start an error
+        ai.errorDuration = Math.floor(Math.random() * 30) + 20; // Random duration for error
+      }
+
+      if (ball.y < ai.y + ai.height / 2) {
+        ai.y -= ai.speed;
+      } else {
+        ai.y += ai.speed;
+      }
+
+      // Prevent going out of bounds
+      if (ai.y < 0) ai.y = 0;
+      if (ai.y + ai.height > canvas.height) ai.y = canvas.height - ai.height;
+    }
+
+    // Update wizard positions
+    function updateWizards() {
+      redWizard.style.top = `${player.y + paddleHeight / 2 - 25}px`;
+      redWizard.style.left = `${player.x - 40}px`; // Closer to the shield
+
+      blueWizard.style.top = `${ai.y + paddleHeight / 2 - 25}px`;
+      blueWizard.style.left = `${ai.x + ai.width - 10}px`; // Closer to the shield
+    }
+
+    // Game loop
+    function gameLoop() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      drawPaddle(player);
+      drawPaddle(ai);
+      drawBall();
+      drawScores();
+
+      movePlayer();
+      moveAI();
+      moveBall();
+      updateWizards();
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    // Event listeners for player control
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowUp") player.dy = -player.speed;
+      if (e.key === "ArrowDown") player.dy = player.speed;
+    });
+
+    window.addEventListener("keyup", (e) => {
+      if (e.key === "ArrowUp" || e.key === "ArrowDown") player.dy = 0;
+    });
+
+    // Start the game
+    resetBall();
+    gameLoop();
+  </script>
+</body>
+</html>
