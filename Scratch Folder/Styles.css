@@ -5,12 +5,15 @@ body {font-family: Arial, Helvetica, sans-serif;
     border-width: 10px;
     border-style: solid;
     border-color: rgb(251, 241, 226);
+    background-color: #e1f8f8;
+    text-align: center;
     }
     li{font-size: 12px; color: rgb(91, 2, 20);}
-    .bold {font-weight: bold;
+.bold {font-weight: bold;
     color: black;}
-.homebg {background-image: url('../Images/Droplets.jpg');
-text-align: center;}
+.homebg {
+text-align: center;
+}
 .a {color: black;
 text-decoration: none;}
 a:hover {
@@ -25,4 +28,7 @@ a:visited {color: aqua;}
     border: solid 2px rgb(2,2,2);
     font-family:sans-serif;
     
+}
+.green {
+    color: aquamarine;
 }
